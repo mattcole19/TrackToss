@@ -89,7 +89,7 @@ function handleLogout() {
           <ul v-else class="playlist-list">
             <li v-for="playlist in playlists" :key="playlist.id" class="playlist-item">
               <img 
-                v-if="playlist.images[0]" 
+                v-if="playlist.images && playlist.images.length > 0" 
                 :src="playlist.images[0].url" 
                 :alt="playlist.name"
                 class="playlist-image"
