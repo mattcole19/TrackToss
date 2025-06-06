@@ -3,11 +3,13 @@ import { onMounted, ref } from 'vue';
 import { isAuthenticated, initiateSpotifyLogin, handleCallback, logout } from './services/spotifyAuth';
 import { getUserPlaylists } from './services/spotifyApi';
 import type { SpotifyPlaylist } from './types/spotify';
+import SongCleaner from './components/SongCleaner.vue';
 
 const isLoggedIn = ref(false);
 const playlists = ref<SpotifyPlaylist[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const selectedPlaylist = ref<SpotifyPlaylist | null>(null);
 
 onMounted(async () => {
   // Check if we're in the callback route
@@ -56,6 +58,14 @@ function handleLogout() {
   isLoggedIn.value = false;
   playlists.value = [];
 }
+
+function handlePlaylistSelect(playlist: SpotifyPlaylist) {
+  selectedPlaylist.value = playlist;
+}
+
+function handleCloseCleaner() {
+  selectedPlaylist.value = null;
+}
 </script>
 
 <template>
@@ -87,7 +97,12 @@ function handleLogout() {
             No playlists found
           </div>
           <ul v-else class="playlist-list">
-            <li v-for="playlist in playlists" :key="playlist.id" class="playlist-item">
+            <li 
+              v-for="playlist in playlists" 
+              :key="playlist.id" 
+              class="playlist-item"
+              @click="handlePlaylistSelect(playlist)"
+            >
               <img 
                 v-if="playlist.images && playlist.images.length > 0" 
                 :src="playlist.images[0].url" 
@@ -106,6 +121,13 @@ function handleLogout() {
         </div>
       </div>
     </main>
+
+    <SongCleaner
+      v-if="selectedPlaylist"
+      :playlist-id="selectedPlaylist.id"
+      :playlist-name="selectedPlaylist.name"
+      @close="handleCloseCleaner"
+    />
   </div>
 </template>
 

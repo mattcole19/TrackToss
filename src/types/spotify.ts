@@ -51,3 +51,19 @@ export interface SpotifyLikedSongsResponse {
   limit: number;
   offset: number;
 }
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: Array<{
+    id: string;
+    name: string;
+  }>;
+  album: {
+    images: Array<{
+      url: string;
+      height: number | null;
+      width: number | null;
+    }>;
+  };
+}

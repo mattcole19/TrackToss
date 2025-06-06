@@ -64,3 +64,13 @@ export async function removeFromLikedSongs(trackId: string) {
     body: JSON.stringify({ ids: [trackId] }),
   });
 }
+
+export async function removeFromPlaylist(playlistId: string, trackId: string) {
+  return fetchWithAuth(`/playlists/${playlistId}/tracks`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ids: [trackId] }),
+  });
+}
