@@ -4,6 +4,8 @@ import { getAccessToken } from './spotifyAuth';
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+  // Makes request to Spotify API with auth token
+  console.log('fetching', endpoint);
   const token = getAccessToken();
   if (!token) throw new Error('No access token available');
 
@@ -16,7 +18,13 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    console.error('Spotify API error', response);
     throw new Error(`Spotify API error: ${response.statusText}`);
+  }
+
+  // Return null for empty responses (like DELETE requests)
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return null;
   }
 
   return response.json();

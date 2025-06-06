@@ -12,22 +12,27 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const tracks = ref<SpotifyTrack[]>([]);
-const currentIndex = ref(0);
+const tracks = ref<SpotifyTrack[]>([]); // queue of tracks to review
+const keptTracks = ref<SpotifyTrack[]>([]); // tracks that have been kept
+const discardedTracks = ref<SpotifyTrack[]>([]); // tracks that have been discarded
 const loading = ref(false);
 const error = ref<string | null>(null);
-const bufferSize = 5; // Number of tracks to load ahead
+const bufferSize = 5;
+const minTracksThreshold = 4 // Load more when we have fewer than this many tracks
 
 // Load initial batch of tracks
 onMounted(async () => {
-  await loadTracks();
+  await loadInitialTracks();
 });
 
-// TODO: this should be able to handle playlist OR liked songs
-async function loadTracks(offset = 0) {
+/**
+ * Loads the initial batch of tracks when the component mounts.
+ * Shows a loading state while fetching the first set of tracks.
+ */
+async function loadInitialTracks() {
   try {
     loading.value = true;
-    const response = await getLikedSongs(bufferSize, offset);
+    const response = await getLikedSongs(bufferSize, 0);
     tracks.value = response.items.map(item => item.track);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load tracks';
@@ -36,22 +41,62 @@ async function loadTracks(offset = 0) {
   }
 }
 
-async function handleKeep() {
-  // Move to next track
-  currentIndex.value++;
-  
-  // If we're running low on tracks, load more
-  if (tracks.value.length - currentIndex.value < 2) {
-    await loadTracks(tracks.value.length);
+/**
+ * Loads additional tracks in the background when the queue is getting low
+ * @param offset - The number of tracks to skip (based on total tracks processed)
+ */
+async function loadMoreTracks(offset: number) {
+  try {
+    const response = await getLikedSongs(bufferSize, offset);
+    tracks.value = [...tracks.value, ...response.items.map(item => item.track)];
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load more tracks';
   }
 }
 
+/**
+ * Advances to the next track in the queue.
+ * If we're running low on tracks, triggers a background load of more tracks.
+ */
+async function nextTrack() {
+  // Remove the current track from the queue
+  const currentTrack = tracks.value.shift();
+  if (!currentTrack) return;
+
+  // If we're running low on tracks, load more in the background
+  if (tracks.value.length < minTracksThreshold) {
+    const num_tracks_checked = tracks.value.length + keptTracks.value.length + discardedTracks.value.length;
+    await loadMoreTracks(num_tracks_checked);
+  }
+}
+
+/**
+ * Handles keeping the current track.
+ * Adds the track to keptTracks and advances to the next track.
+ */
+async function handleKeep() {
+  const currentTrack = tracks.value[0];
+  if (!currentTrack) return;
+  
+  keptTracks.value.push(currentTrack);
+  await nextTrack();
+}
+
+/**
+ * Handles discarding the current track.
+ * Removes the track from Spotify's Liked Songs, adds it to discardedTracks,
+ * and advances to the next track.
+ */
 async function handleDiscard() {
   try {
-    const currentTrack = tracks.value[currentIndex.value];
+    const currentTrack = tracks.value[0];
+    if (!currentTrack) return;
+
     await removeFromLikedSongs(currentTrack.id);
-    await handleKeep();
+    discardedTracks.value.push(currentTrack);
+    await nextTrack();
   } catch (err) {
+    console.error('error removing track', err);
     error.value = err instanceof Error ? err.message : 'Failed to remove track';
   }
 }
@@ -61,25 +106,29 @@ async function handleDiscard() {
   <div class="song-cleaner">
     <div class="header">
       <h2>Cleaning: {{ playlistName }}</h2>
+      <div class="stats">
+        <span>Kept: {{ keptTracks.length }}</span>
+        <span>Discarded: {{ discardedTracks.length }}</span>
+      </div>
       <button @click="emit('close')" class="close-button">×</button>
     </div>
 
     <div v-if="loading" class="loading">Loading...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="tracks.length === 0" class="no-tracks">
-      No tracks found in this playlist
+      No more tracks to review
     </div>
     <div v-else class="track-container">
       <div class="track-card">
         <img 
-          v-if="tracks[currentIndex].album.images[0]" 
-          :src="tracks[currentIndex].album.images[0].url" 
-          :alt="tracks[currentIndex].name"
+          v-if="tracks[0].album.images[0]" 
+          :src="tracks[0].album.images[0].url" 
+          :alt="tracks[0].name"
           class="track-image"
         >
         <div class="track-info">
-          <h3>{{ tracks[currentIndex].name }}</h3>
-          <p>{{ tracks[currentIndex].artists.map(a => a.name).join(', ') }}</p>
+          <h3>{{ tracks[0].name }}</h3>
+          <p>{{ tracks[0].artists.map(a => a.name).join(', ') }}</p>
         </div>
       </div>
 
@@ -190,5 +239,16 @@ async function handleDiscard() {
 
 .error {
   color: #ff4444;
+}
+
+.stats {
+  display: flex;
+  gap: 1rem;
+  color: #b3b3b3;
+}
+
+.stats span {
+  padding: 0.5rem 1rem;
+  background: #282828;
 }
 </style> 

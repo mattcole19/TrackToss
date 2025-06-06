@@ -11,6 +11,10 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const selectedPlaylist = ref<SpotifyPlaylist | null>(null);
 
+/**
+ * Initializes the app by checking for OAuth callback and loading playlists if authenticated.
+ * Handles the Spotify OAuth callback if present in the URL.
+ */
 onMounted(async () => {
   // Check if we're in the callback route
   const urlParams = new URLSearchParams(window.location.search);
@@ -36,6 +40,10 @@ onMounted(async () => {
   }
 });
 
+/**
+ * Fetches the user's playlists from Spotify, including Liked Songs.
+ * Updates the playlists state with the fetched data.
+ */
 async function loadPlaylists() {
   try {
     loading.value = true;
@@ -49,20 +57,34 @@ async function loadPlaylists() {
   }
 }
 
+/**
+ * Initiates the Spotify OAuth login flow.
+ * Redirects the user to Spotify's login page.
+ */
 function handleLogin() {
   initiateSpotifyLogin();
 }
 
+/**
+ * Logs the user out by clearing auth state and playlists.
+ */
 function handleLogout() {
   logout();
   isLoggedIn.value = false;
   playlists.value = [];
 }
 
+/**
+ * Sets the selected playlist for cleaning.
+ * @param playlist - The playlist to clean
+ */
 function handlePlaylistSelect(playlist: SpotifyPlaylist) {
   selectedPlaylist.value = playlist;
 }
 
+/**
+ * Closes the song cleaner interface.
+ */
 function handleCloseCleaner() {
   selectedPlaylist.value = null;
 }
