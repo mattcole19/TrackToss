@@ -1,4 +1,4 @@
-import type { SpotifyPlaylistsResponse } from '../types/spotify';
+import type { SpotifyPlaylistsResponse, SpotifyLikedSongsResponse, SpotifyPlaylist } from '../types/spotify';
 import { getAccessToken } from './spotifyAuth';
 
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
@@ -22,11 +22,36 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
-export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyPlaylistsResponse> {
-  return fetchWithAuth(`/me/playlists?limit=${limit}&offset=${offset}`);
+export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyPlaylist[]> {
+  // Liked Songs isn't considered a playlist, so we need to fetch it separately, then convert it into a Playlist-like object
+  const [playlistsResponse, likedSongsResponse] = await Promise.all([
+    fetchWithAuth(`/me/playlists?limit=${limit}&offset=${offset}`) as Promise<SpotifyPlaylistsResponse>,
+    fetchWithAuth(`/me/tracks?limit=1`) as Promise<SpotifyLikedSongsResponse>
+  ]);
+
+  // Create a virtual "Liked Songs" playlist
+  const likedSongsPlaylist: SpotifyPlaylist = {
+    id: 'liked-songs',
+    name: 'Liked Songs',
+    description: null,
+    images: likedSongsResponse.items[0]?.track.album.images || null,
+    tracks: {
+      total: likedSongsResponse.total
+    },
+    type: 'liked'
+  };
+
+  // Add type to regular playlists
+  const typedPlaylists = playlistsResponse.items.map(playlist => ({
+    ...playlist,
+    type: 'playlist' as const
+  }));
+
+  // Combine both lists, putting Liked Songs first
+  return [likedSongsPlaylist, ...typedPlaylists];
 }
 
-export async function getLikedSongs(limit = 50, offset = 0) {
+export async function getLikedSongs(limit = 50, offset = 0): Promise<SpotifyLikedSongsResponse> {
   return fetchWithAuth(`/me/tracks?limit=${limit}&offset=${offset}`);
 }
 
@@ -38,4 +63,4 @@ export async function removeFromLikedSongs(trackId: string) {
     },
     body: JSON.stringify({ ids: [trackId] }),
   });
-} 
+}

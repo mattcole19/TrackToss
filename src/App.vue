@@ -38,7 +38,7 @@ async function loadPlaylists() {
   try {
     loading.value = true;
     const response = await getUserPlaylists();
-    playlists.value = response.items;
+    playlists.value = response;
     isLoggedIn.value = true;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load playlists';
@@ -95,7 +95,10 @@ function handleLogout() {
                 class="playlist-image"
               >
               <div class="playlist-info">
-                <h3>{{ playlist.name }}</h3>
+                <h3>
+                  {{ playlist.name }}
+                  <span v-if="playlist.type === 'liked'" class="liked-badge">❤️</span>
+                </h3>
                 <p>{{ playlist.tracks.total }} tracks</p>
               </div>
             </li>
@@ -181,6 +184,12 @@ header {
   align-items: center;
   padding: 1rem;
   border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.playlist-item:hover {
+  background-color: #f5f5f5;
 }
 
 .playlist-image {
@@ -210,5 +219,11 @@ header {
   text-align: center;
   color: #666;
   margin: 2rem 0;
+}
+
+.liked-badge {
+  font-size: 0.9em;
+  margin-left: 0.5rem;
+  vertical-align: middle;
 }
 </style>

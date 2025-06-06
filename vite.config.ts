@@ -6,8 +6,6 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: true, // needed for ngrok
-    allowedHosts: [
-      'd058-2600-4040-7407-4000-557-1865-3aeb-eb99.ngrok-free.app'
-    ]
+    allowedHosts: true // TODO: remove this once we have a proper domain
   }
 })
