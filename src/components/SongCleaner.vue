@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import type { SpotifyTrack } from '../types/spotify';
 import { getLikedSongs, removeFromLikedSongs } from '../services/spotifyApi';
+import SpotifyPlayer from './SpotifyPlayer.vue';
 
 const props = defineProps<{
   playlistId: string;
@@ -130,6 +131,7 @@ async function handleDiscard() {
           <h3>{{ tracks[0].name }}</h3>
           <p>{{ tracks[0].artists.map(a => a.name).join(', ') }}</p>
         </div>
+        <SpotifyPlayer :track-id="tracks[0].id" />
       </div>
 
       <div class="actions">

@@ -6,7 +6,7 @@ const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   // Makes request to Spotify API with auth token
   console.log('fetching', endpoint);
-  const token = getAccessToken();
+  const token = await getAccessToken();
   if (!token) throw new Error('No access token available');
 
   const response = await fetch(`${SPOTIFY_API_BASE}${endpoint}`, {
@@ -80,5 +80,17 @@ export async function removeFromPlaylist(playlistId: string, trackId: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ ids: [trackId] }),
+  });
+}
+
+export async function playTrack(trackId: string, deviceId: string) {
+  return fetchWithAuth(`/me/player/play?device_id=${deviceId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      uris: [`spotify:track:${trackId}`]
+    }),
   });
 }
