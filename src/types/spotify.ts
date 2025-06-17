@@ -67,3 +67,42 @@ export interface SpotifyTrack {
     }>;
   };
 }
+
+// Spotify Web Playback SDK types
+declare global {
+  interface Window {
+    onSpotifyWebPlaybackSDKReady: () => void;
+    Spotify: {
+      Player: new (options: {
+        name: string;
+        getOAuthToken: (callback: (token: string) => void) => void;
+        volume: number;
+      }) => SpotifyPlayer;
+    };
+  }
+}
+
+export interface SpotifyPlayer {
+  connect(): Promise<boolean>;
+  disconnect(): void;
+  addListener(eventName: string, callback: (event: any) => void): void;
+  removeListener(eventName: string, callback: (event: any) => void): void;
+  getCurrentState(): Promise<{
+    paused: boolean;
+    position: number;
+    duration: number;
+    track_window: {
+      current_track: {
+        id: string;
+        uri: string;
+        name: string;
+        duration_ms: number;
+      };
+    };
+  } | null>;
+  resume(): Promise<void>;
+  pause(): Promise<void>;
+  togglePlay(): Promise<void>;
+  seek(positionMs: number): Promise<void>;
+  setVolume(volume: number): Promise<void>;
+}

@@ -11,7 +11,10 @@ const SCOPES = [
   'playlist-modify-public',
   'playlist-modify-private',
   'user-library-read',
-  'user-library-modify'
+  'user-library-modify',
+  'streaming',
+  'user-read-playback-state',
+  'user-modify-playback-state'
 ];
 
 // Generate a random string for PKCE
@@ -86,12 +89,60 @@ export async function handleCallback(code: string): Promise<SpotifyAuthResponse>
   return data;
 }
 
-export function getAccessToken(): string | null {
-  return localStorage.getItem('access_token');
+async function refreshToken(): Promise<SpotifyAuthResponse> {
+  const refresh_token = localStorage.getItem('refresh_token');
+  if (!refresh_token) throw new Error('No refresh token available');
+
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    grant_type: 'refresh_token',
+    refresh_token,
+  });
+
+  const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to refresh token');
+  }
+
+  const data = await response.json();
+  localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('token_expires_at', String(Date.now() + data.expires_in * 1000));
+  if (data.refresh_token) {
+    localStorage.setItem('refresh_token', data.refresh_token);
+  }
+  
+  return data;
+}
+
+export async function getAccessToken(): Promise<string | null> {
+  const token = localStorage.getItem('access_token');
+  const expiresAt = localStorage.getItem('token_expires_at');
+  
+  if (!token || !expiresAt) return null;
+
+  // If token is expired or about to expire (within 5 minutes), refresh it
+  if (Date.now() > Number(expiresAt) - 5 * 60 * 1000) {
+    try {
+      const response = await refreshToken();
+      return response.access_token;
+    } catch (err) {
+      console.error('Failed to refresh token:', err);
+      return null;
+    }
+  }
+
+  return token;
 }
 
 export function isAuthenticated(): boolean {
-  const token = getAccessToken();
+  const token = localStorage.getItem('access_token');
   const expiresAt = localStorage.getItem('token_expires_at');
   return !!token && !!expiresAt && Date.now() < Number(expiresAt);
 }
