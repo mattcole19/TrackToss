@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import type { SpotifyTrack } from '../types/spotify';
-import { getLikedSongs, removeFromLikedSongs } from '../services/spotifyApi';
+import { getTracks, removeTrack } from '../services/spotifyApi';
 import SpotifyPlayer from './SpotifyPlayer.vue';
 
 const props = defineProps<{
@@ -33,8 +33,8 @@ onMounted(async () => {
 async function loadInitialTracks() {
   try {
     loading.value = true;
-    const response = await getLikedSongs(bufferSize, 0);
-    tracks.value = response.items.map(item => item.track);
+    const response = await getTracks(props.playlistId, bufferSize, 0);
+    tracks.value = response.items;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load tracks';
   } finally {
@@ -48,8 +48,8 @@ async function loadInitialTracks() {
  */
 async function loadMoreTracks(offset: number) {
   try {
-    const response = await getLikedSongs(bufferSize, offset);
-    tracks.value = [...tracks.value, ...response.items.map(item => item.track)];
+    const response = await getTracks(props.playlistId, bufferSize, offset);
+    tracks.value = [...tracks.value, ...response.items];
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load more tracks';
   }
@@ -85,7 +85,7 @@ async function handleKeep() {
 
 /**
  * Handles discarding the current track.
- * Removes the track from Spotify's Liked Songs, adds it to discardedTracks,
+ * Removes the track from the playlist/Liked Songs, adds it to discardedTracks,
  * and advances to the next track.
  */
 async function handleDiscard() {
@@ -93,7 +93,7 @@ async function handleDiscard() {
     const currentTrack = tracks.value[0];
     if (!currentTrack) return;
 
-    await removeFromLikedSongs(currentTrack.id);
+    await removeTrack(props.playlistId, currentTrack.id);
     discardedTracks.value.push(currentTrack);
     await nextTrack();
   } catch (err) {

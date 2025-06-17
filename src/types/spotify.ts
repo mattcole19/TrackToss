@@ -66,6 +66,17 @@ export interface SpotifyTrack {
       width: number | null;
     }>;
   };
+  duration_ms?: number;
+  uri?: string;
+}
+
+export interface SpotifyPlaylistTrack {
+  track: SpotifyTrack;
+}
+
+export interface SpotifyPlaylistTracksResponse {
+  items: SpotifyPlaylistTrack[];
+  total: number;
 }
 
 // Spotify Web Playback SDK types
