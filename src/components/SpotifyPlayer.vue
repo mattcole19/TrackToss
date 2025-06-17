@@ -2,6 +2,15 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { getAccessToken } from '../services/spotifyAuth';
 import { playTrack } from '../services/spotifyApi';
+import type { SpotifyPlayer } from '../types/spotify';
+
+interface SpotifyErrorEvent {
+  message: string;
+}
+
+interface SpotifyReadyEvent {
+  device_id: string;
+}
 
 const props = defineProps<{
   trackId: string;
@@ -9,7 +18,7 @@ const props = defineProps<{
 
 const isPlaying = ref(false);
 const error = ref<string | null>(null);
-const player = ref<Spotify.Player | null>(null);
+const player = ref<SpotifyPlayer | null>(null);
 const deviceId = ref<string | null>(null);
 
 // Watch for track changes
@@ -21,6 +30,17 @@ watch(() => props.trackId, async (newTrackId, oldTrackId) => {
     }
     isPlaying.value = false;
     error.value = null;
+
+    // If we have a device ID, start playing the new track
+    if (deviceId.value) {
+      try {
+        await playTrack(newTrackId, deviceId.value);
+        isPlaying.value = true;
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to play track';
+        isPlaying.value = false;
+      }
+    }
   }
 });
 
@@ -35,9 +55,9 @@ onMounted(async () => {
 
     // Initialize the player when the SDK is ready
     window.onSpotifyWebPlaybackSDKReady = () => {
-      player.value = new Spotify.Player({
+      player.value = new window.Spotify.Player({
         name: 'TrackToss Web Player',
-        getOAuthToken: async (cb) => {
+        getOAuthToken: async (cb: (token: string) => void) => {
           const token = await getAccessToken();
           if (token) {
             cb(token);
@@ -49,29 +69,29 @@ onMounted(async () => {
       });
 
       // Error handling
-      player.value.addListener('initialization_error', ({ message }) => {
-        error.value = `Failed to initialize: ${message}`;
+      player.value?.addListener('initialization_error', (event: SpotifyErrorEvent) => {
+        error.value = `Failed to initialize: ${event.message}`;
       });
 
-      player.value.addListener('authentication_error', ({ message }) => {
-        error.value = `Failed to authenticate: ${message}`;
+      player.value?.addListener('authentication_error', (event: SpotifyErrorEvent) => {
+        error.value = `Failed to authenticate: ${event.message}`;
       });
 
-      player.value.addListener('account_error', ({ message }) => {
-        error.value = `Account error: ${message}`;
+      player.value?.addListener('account_error', (event: SpotifyErrorEvent) => {
+        error.value = `Account error: ${event.message}`;
       });
 
-      player.value.addListener('playback_error', ({ message }) => {
-        error.value = `Playback error: ${message}`;
+      player.value?.addListener('playback_error', (event: SpotifyErrorEvent) => {
+        error.value = `Playback error: ${event.message}`;
       });
 
       // Ready handling
-      player.value.addListener('ready', ({ device_id }) => {
-        deviceId.value = device_id;
+      player.value?.addListener('ready', (event: SpotifyReadyEvent) => {
+        deviceId.value = event.device_id;
       });
 
       // Connect to the player
-      player.value.connect();
+      player.value?.connect();
     };
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to initialize player';

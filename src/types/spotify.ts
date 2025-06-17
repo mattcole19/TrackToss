@@ -77,34 +77,32 @@ declare global {
         name: string;
         getOAuthToken: (callback: (token: string) => void) => void;
         volume: number;
-      }) => Spotify.Player;
+      }) => SpotifyPlayer;
     };
   }
+}
 
-  namespace Spotify {
-    interface Player {
-      connect(): Promise<boolean>;
-      disconnect(): void;
-      addListener(eventName: string, callback: (event: { message: string }) => void): void;
-      removeListener(eventName: string, callback: (event: { message: string }) => void): void;
-      getCurrentState(): Promise<{
-        paused: boolean;
-        position: number;
-        duration: number;
-        track_window: {
-          current_track: {
-            id: string;
-            uri: string;
-            name: string;
-            duration_ms: number;
-          };
-        };
-      } | null>;
-      resume(): Promise<void>;
-      pause(): Promise<void>;
-      togglePlay(): Promise<void>;
-      seek(positionMs: number): Promise<void>;
-      setVolume(volume: number): Promise<void>;
-    }
-  }
+export interface SpotifyPlayer {
+  connect(): Promise<boolean>;
+  disconnect(): void;
+  addListener(eventName: string, callback: (event: any) => void): void;
+  removeListener(eventName: string, callback: (event: any) => void): void;
+  getCurrentState(): Promise<{
+    paused: boolean;
+    position: number;
+    duration: number;
+    track_window: {
+      current_track: {
+        id: string;
+        uri: string;
+        name: string;
+        duration_ms: number;
+      };
+    };
+  } | null>;
+  resume(): Promise<void>;
+  pause(): Promise<void>;
+  togglePlay(): Promise<void>;
+  seek(positionMs: number): Promise<void>;
+  setVolume(volume: number): Promise<void>;
 }
