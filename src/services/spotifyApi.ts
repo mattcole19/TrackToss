@@ -1,7 +1,14 @@
-import type { SpotifyPlaylistsResponse, SpotifyLikedSongsResponse, SpotifyPlaylist } from '../types/spotify';
+import type { 
+  SpotifyPlaylistsResponse, 
+  SpotifyLikedSongsResponse, 
+  SpotifyPlaylist,
+  SpotifyPlaylistTracksResponse,
+  SpotifyTrack
+} from '../types/spotify';
 import { getAccessToken } from './spotifyAuth';
 
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
+const SPOTIFY_LIKED_SONGS_PLAYLIST_ID = 'liked-songs';
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   // Makes request to Spotify API with auth token
@@ -39,7 +46,7 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
 
   // Create a virtual "Liked Songs" playlist
   const likedSongsPlaylist: SpotifyPlaylist = {
-    id: 'liked-songs',
+    id: SPOTIFY_LIKED_SONGS_PLAYLIST_ID,
     name: 'Liked Songs',
     description: null,
     images: likedSongsResponse.items[0]?.track.album.images || null,
@@ -59,28 +66,51 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
   return [likedSongsPlaylist, ...typedPlaylists];
 }
 
-export async function getLikedSongs(limit = 50, offset = 0): Promise<SpotifyLikedSongsResponse> {
-  return fetchWithAuth(`/me/tracks?limit=${limit}&offset=${offset}`);
+/**
+ * Fetches tracks from either Liked Songs or a playlist
+ * @param playlistId - The ID of the playlist or 'liked-songs'
+ * @param limit - Number of tracks to fetch
+ * @param offset - Offset for pagination
+ */
+export async function getTracks(playlistId: string, limit = 50, offset = 0): Promise<{ items: SpotifyTrack[], total: number }> {
+  if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
+    const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${offset}`) as SpotifyLikedSongsResponse;
+    return {
+      items: response.items.map(item => item.track),
+      total: response.total
+    };
+  } else {
+    const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`) as SpotifyPlaylistTracksResponse;
+    return {
+      items: response.items.map(item => item.track),
+      total: response.total
+    };
+  }
 }
 
-export async function removeFromLikedSongs(trackId: string) {
-  return fetchWithAuth(`/me/tracks`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ ids: [trackId] }),
-  });
-}
-
-export async function removeFromPlaylist(playlistId: string, trackId: string) {
-  return fetchWithAuth(`/playlists/${playlistId}/tracks`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ ids: [trackId] }),
-  });
+/**
+ * Removes a track from either Liked Songs or a playlist
+ * @param playlistId - The ID of the playlist or 'liked-songs'
+ * @param trackId - The ID of the track to remove
+ */
+export async function removeTrack(playlistId: string, trackId: string) {
+  if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
+    return fetchWithAuth(`/me/tracks`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids: [trackId] }),
+    });
+  } else {
+    return fetchWithAuth(`/playlists/${playlistId}/tracks`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tracks: [{ uri: `spotify:track:${trackId}` }] }),
+    });
+  }
 }
 
 export async function playTrack(trackId: string, deviceId: string) {
