@@ -19,6 +19,17 @@ export interface SpotifyPlaylist {
     total: number;
   };
   type: 'playlist' | 'liked';
+  collaborative: boolean;
+  owner: {
+    external_urls: {
+      spotify: string;
+    };
+    href: string;
+    id: string;
+    type: string;
+    uri: string;
+    display_name: string;
+  };
 }
 
 export interface SpotifyPlaylistsResponse {

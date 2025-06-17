@@ -37,10 +37,34 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
+/**
+ * Fetches the user's playlists from Spotify
+ * @param limit - Number of playlists to fetch
+ * @param offset - Offset for pagination
+ */
+async function fetchUserPlaylists(limit = 50, offset = 0): Promise<SpotifyPlaylistsResponse> {
+  const response = await fetchWithAuth(`/me/playlists?limit=${limit}&offset=${offset}`) as SpotifyPlaylistsResponse;
+  
+  // Log playlist details
+  response.items.forEach(playlist => {
+    console.log('Playlist:', {
+      name: playlist.name,
+      isCollaborative: playlist.collaborative,
+      owner: {
+        id: playlist.owner.id,
+        displayName: playlist.owner.display_name,
+        type: playlist.owner.type
+      }
+    });
+  });
+  
+  return response;
+}
+
 export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyPlaylist[]> {
   // Liked Songs isn't considered a playlist, so we need to fetch it separately, then convert it into a Playlist-like object
   const [playlistsResponse, likedSongsResponse] = await Promise.all([
-    fetchWithAuth(`/me/playlists?limit=${limit}&offset=${offset}`) as Promise<SpotifyPlaylistsResponse>,
+    fetchUserPlaylists(limit, offset),
     fetchWithAuth(`/me/tracks?limit=1`) as Promise<SpotifyLikedSongsResponse>
   ]);
 
@@ -53,7 +77,18 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
     tracks: {
       total: likedSongsResponse.total
     },
-    type: 'liked'
+    type: 'liked',
+    collaborative: false,
+    owner: {
+      external_urls: {
+        spotify: ''
+      },
+      href: '',
+      id: 'user',
+      type: 'user',
+      uri: '',
+      display_name: 'You'
+    }
   };
 
   // Add type to regular playlists
