@@ -149,17 +149,31 @@ async function handleDiscard() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #121212;  /* Spotify's dark background color */
+  background: #121212;
   z-index: 1000;
-  padding: 2rem;
-  color: white;  /* Making text white for better contrast */
+  padding: 1rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+  flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.header h2 {
+  font-size: 1.2rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
 }
 
 .close-button {
@@ -168,52 +182,85 @@ async function handleDiscard() {
   font-size: 2rem;
   cursor: pointer;
   padding: 0.5rem;
+  color: white;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .track-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   max-width: 600px;
   margin: 0 auto;
+  width: 100%;
+  padding: 0 0.5rem;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 .track-card {
-  background: #282828;  /* Slightly lighter than background */
+  background: #282828;
   border-radius: 8px;
-  padding: 2rem;
-  margin-bottom: 2rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
   text-align: center;
+  flex-shrink: 0; /* Prevent card from shrinking */
 }
 
 .track-image {
-  width: 300px;
-  height: 300px;
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1;
   object-fit: cover;
   border-radius: 4px;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.track-info {
+  flex-shrink: 0; /* Prevent info from shrinking */
 }
 
 .track-info h3 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .track-info p {
-  margin: 0.5rem 0 0;
-  color: #b3b3b3;  /* Spotify's secondary text color */
+  margin: 0.25rem 0 0;
+  color: #b3b3b3;
+  font-size: 0.9rem;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions {
   display: flex;
   justify-content: center;
   gap: 1rem;
+  margin-top: auto;
+  padding: 0.5rem 0;
+  flex-shrink: 0; /* Prevent actions from shrinking */
 }
 
 .keep-button, .discard-button {
-  padding: 1rem 2rem;
+  padding: 1rem;
   border: none;
   border-radius: 25px;
   font-size: 1.1rem;
   cursor: pointer;
   transition: background-color 0.2s;
+  flex: 1;
+  max-width: 150px;
+  min-height: 44px;
 }
 
 .keep-button {
@@ -226,17 +273,18 @@ async function handleDiscard() {
   color: white;
 }
 
-.keep-button:hover {
+.keep-button:active {
   background-color: #1ed760;
 }
 
-.discard-button:hover {
+.discard-button:active {
   background-color: #ff6666;
 }
 
 .loading, .error, .no-tracks {
   text-align: center;
   margin: 2rem 0;
+  padding: 0 1rem;
 }
 
 .error {
@@ -245,12 +293,36 @@ async function handleDiscard() {
 
 .stats {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   color: #b3b3b3;
+  font-size: 0.9rem;
 }
 
 .stats span {
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
   background: #282828;
+  border-radius: 4px;
+}
+
+@media (min-width: 768px) {
+  .song-cleaner {
+    padding: 2rem;
+  }
+
+  .header h2 {
+    font-size: 1.5rem;
+  }
+
+  .track-card {
+    padding: 2rem;
+  }
+
+  .track-info h3 {
+    font-size: 1.5rem;
+  }
+
+  .keep-button, .discard-button {
+    padding: 1rem 2rem;
+  }
 }
 </style> 

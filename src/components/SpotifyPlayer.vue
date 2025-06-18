@@ -150,14 +150,15 @@ async function togglePlay() {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .play-button {
   background: #1DB954;
   border: none;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   font-size: 1.2rem;
   color: white;
   cursor: pointer;
@@ -165,10 +166,12 @@ async function togglePlay() {
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s;
+  touch-action: manipulation;
 }
 
-.play-button:hover:not(:disabled) {
+.play-button:active:not(:disabled) {
   background: #1ed760;
+  transform: scale(0.95);
 }
 
 .play-button:disabled {
@@ -180,5 +183,6 @@ async function togglePlay() {
   color: #ff4444;
   font-size: 0.9rem;
   text-align: center;
+  padding: 0 1rem;
 }
 </style> 
