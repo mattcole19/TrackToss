@@ -93,11 +93,11 @@ function handleCloseCleaner() {
 <template>
   <div class="container">
     <header>
-      <h1>Spotify Song Cleaner</h1>
+      <h1>TrackToss</h1>
       <div v-if="error" class="error">{{ error }}</div>
     </header>
 
-    <main>
+    <main v-if="!selectedPlaylist">
       <div v-if="loading" class="loading">Loading...</div>
       
       <div v-else-if="!isLoggedIn" class="login-container">
@@ -157,12 +157,21 @@ function handleCloseCleaner() {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 0 1rem;
+}
+
+header h1 {
+  font-size: 1.8rem;
+  margin: 0;
 }
 
 .error {
@@ -193,6 +202,8 @@ header {
   font-size: 1.1rem;
   cursor: pointer;
   transition: background-color 0.2s;
+  width: 100%;
+  max-width: 300px;
 }
 
 .login-button:hover {
@@ -203,6 +214,7 @@ header {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 1rem;
+  padding: 0 1rem;
 }
 
 .logout-button {
@@ -215,12 +227,19 @@ header {
 }
 
 .playlists {
-  margin-top: 2rem;
+  margin-top: 1rem;
+  padding: 0 1rem;
+}
+
+.playlists h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .playlist-list {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .playlist-item {
@@ -230,15 +249,18 @@ header {
   border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: background-color 0.2s;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  background: #282828;
 }
 
-.playlist-item:hover {
-  background-color: #f5f5f5;
+.playlist-item:active {
+  background-color: #383838;
 }
 
 .playlist-image {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   object-fit: cover;
   margin-right: 1rem;
   border-radius: 4px;
@@ -246,16 +268,20 @@ header {
 
 .playlist-info {
   flex: 1;
+  text-align: left;
 }
 
 .playlist-info h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .playlist-info p {
-  margin: 0.5rem 0 0;
-  color: #666;
+  margin: 0.25rem 0 0;
+  color: #b3b3b3;
   font-size: 0.9rem;
 }
 
@@ -269,5 +295,28 @@ header {
   font-size: 0.9em;
   margin-left: 0.5rem;
   vertical-align: middle;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 2rem;
+  }
+
+  header h1 {
+    font-size: 2.5rem;
+  }
+
+  .playlist-item {
+    padding: 1.5rem;
+  }
+
+  .playlist-image {
+    width: 60px;
+    height: 60px;
+  }
+
+  .playlist-info h3 {
+    font-size: 1.1rem;
+  }
 }
 </style>

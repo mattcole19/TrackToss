@@ -116,4 +116,5 @@ export interface SpotifyPlayer {
   togglePlay(): Promise<void>;
   seek(positionMs: number): Promise<void>;
   setVolume(volume: number): Promise<void>;
+  activateElement(): Promise<void>; // To bypass autoplay blocking on mobile
 }
