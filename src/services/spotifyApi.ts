@@ -3,12 +3,78 @@ import type {
   SpotifyLikedSongsResponse, 
   SpotifyPlaylist,
   SpotifyPlaylistTracksResponse,
-  SpotifyTrack
+  SpotifyTrack,
+  SpotifyError,
+  SpotifyErrorResponse
 } from '../types/spotify';
 import { getAccessToken } from './spotifyAuth';
 
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 const SPOTIFY_LIKED_SONGS_PLAYLIST_ID = 'liked-songs';
+
+/**
+ * Parses Spotify API error responses and returns structured error information
+ */
+function parseSpotifyError(response: Response, responseText?: string): SpotifyError {
+  const status = response.status;
+  const retryAfter = response.headers.get('Retry-After');
+  
+  // Try to parse error response
+  let errorMessage = 'Unknown error occurred';
+  try {
+    if (responseText) {
+      const errorData: SpotifyErrorResponse = JSON.parse(responseText);
+      errorMessage = errorData.error?.message || errorMessage;
+    }
+  } catch {
+    // If parsing fails, use status text
+    errorMessage = response.statusText || errorMessage;
+  }
+
+  // Categorize errors based on status codes
+  switch (status) {
+    case 429:
+      return {
+        type: 'rate_limit',
+        message: 'Rate limit exceeded. Please wait before trying again.',
+        retryAfter: retryAfter ? parseInt(retryAfter) : 60,
+        status
+      };
+    case 401:
+      return {
+        type: 'authentication',
+        message: 'Authentication failed. Please log in again.',
+        status
+      };
+    case 403:
+      return {
+        type: 'permission',
+        message: 'You don\'t have permission to perform this action.',
+        status
+      };
+    case 404:
+      return {
+        type: 'unknown',
+        message: 'Resource not found.',
+        status
+      };
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return {
+        type: 'network',
+        message: 'Spotify service is temporarily unavailable. Please try again later.',
+        status
+      };
+    default:
+      return {
+        type: 'unknown',
+        message: errorMessage,
+        status
+      };
+  }
+}
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   // Makes request to Spotify API with auth token
@@ -26,7 +92,9 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     console.error('Spotify API error', response);
-    throw new Error(`Spotify API error: ${response.statusText}`);
+    const responseText = await response.text();
+    const error = parseSpotifyError(response, responseText);
+    throw error;
   }
 
   // Return null for empty responses (like DELETE requests)
@@ -66,23 +134,78 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
   return [likedSongsPlaylist, ...typedPlaylists];
 }
 
+// Cache for total track counts to avoid repeated API calls
+const totalCountCache = new Map<string, number>();
+
 /**
  * Fetches tracks from either Liked Songs or a playlist
  * @param playlistId - The ID of the playlist or 'liked-songs'
  * @param limit - Number of tracks to fetch
  * @param offset - Offset for pagination
+ * @param reverse - If true, fetch tracks in reverse order (oldest first)
  */
-export async function getTracks(playlistId: string, limit = 50, offset = 0): Promise<{ items: SpotifyTrack[], total: number }> {
+export async function getTracks(
+  playlistId: string, 
+  limit = 50, 
+  offset = 0, 
+  reverse = true
+): Promise<{ items: SpotifyTrack[], total: number }> {
   if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
-    const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${offset}`) as SpotifyLikedSongsResponse;
+    // For Liked Songs, we need to calculate the reverse offset
+    let actualOffset = offset;
+    let total: number;
+    
+    if (reverse) {
+      // Get total count from cache or API
+      if (totalCountCache.has(playlistId)) {
+        total = totalCountCache.get(playlistId)!;
+      } else {
+        const totalResponse = await fetchWithAuth(`/me/tracks?limit=1`) as SpotifyLikedSongsResponse;
+        total = totalResponse.total;
+        totalCountCache.set(playlistId, total);
+      }
+      
+      // For reverse order: we want to start from the end and work backwards
+      // If offset=0, we want the last 'limit' tracks
+      // If offset=5, we want the 5 tracks before the last 'limit' tracks
+      actualOffset = Math.max(0, total - offset - limit);
+    }
+    
+    const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyLikedSongsResponse;
+    const items = response.items.map(item => item.track);
+    
+    // If reverse is true, reverse the order of items so oldest comes first
     return {
-      items: response.items.map(item => item.track),
+      items: reverse ? items.reverse() : items,
       total: response.total
     };
   } else {
-    const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`) as SpotifyPlaylistTracksResponse;
+    // For regular playlists, we need to calculate the reverse offset
+    let actualOffset = offset;
+    let total: number;
+    
+    if (reverse) {
+      // Get total count from cache or API
+      if (totalCountCache.has(playlistId)) {
+        total = totalCountCache.get(playlistId)!;
+      } else {
+        const totalResponse = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=1`) as SpotifyPlaylistTracksResponse;
+        total = totalResponse.total;
+        totalCountCache.set(playlistId, total);
+      }
+      
+      // For reverse order: we want to start from the end and work backwards
+      // If offset=0, we want the last 'limit' tracks
+      // If offset=5, we want the 5 tracks before the last 'limit' tracks
+      actualOffset = Math.max(0, total - offset - limit);
+    }
+    
+    const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyPlaylistTracksResponse;
+    const items = response.items.map(item => item.track);
+    
+    // If reverse is true, reverse the order of items so oldest comes first
     return {
-      items: response.items.map(item => item.track),
+      items: reverse ? items.reverse() : items,
       total: response.total
     };
   }
@@ -94,6 +217,12 @@ export async function getTracks(playlistId: string, limit = 50, offset = 0): Pro
  * @param trackId - The ID of the track to remove
  */
 export async function removeTrack(playlistId: string, trackId: string) {
+  // Decrement the total count cache since we're removing a track
+  if (totalCountCache.has(playlistId)) {
+    const currentTotal = totalCountCache.get(playlistId)!;
+    totalCountCache.set(playlistId, Math.max(0, currentTotal - 1));
+  }
+  
   if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
     return fetchWithAuth(`/me/tracks`, {
       method: 'DELETE',

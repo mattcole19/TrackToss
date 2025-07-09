@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { isAuthenticated, initiateSpotifyLogin, handleCallback, logout } from './services/spotifyAuth';
 import { getUserPlaylists } from './services/spotifyApi';
 import type { SpotifyPlaylist } from './types/spotify';
@@ -10,6 +10,19 @@ const playlists = ref<SpotifyPlaylist[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const selectedPlaylist = ref<SpotifyPlaylist | null>(null);
+const searchTerm = ref('');
+
+// Computed property to filter playlists based on search term
+const filteredPlaylists = computed(() => {
+  if (!searchTerm.value.trim()) {
+    return playlists.value;
+  }
+  
+  const term = searchTerm.value.toLowerCase().trim();
+  return playlists.value.filter(playlist => 
+    playlist.name.toLowerCase().includes(term)
+  );
+});
 
 /**
  * Initializes the app by checking for OAuth callback and loading playlists if authenticated.
@@ -101,6 +114,9 @@ function handleCloseCleaner() {
       <div v-if="loading" class="loading">Loading...</div>
       
       <div v-else-if="!isLoggedIn" class="login-container">
+        <div class="app-description">
+          <p>Pick a playlist and quickly delete songs from it while listening to snippets. Perfect for cleaning up your music library!</p>
+        </div>
         <button @click="handleLogin" class="login-button">
           Login with Spotify
         </button>
@@ -115,12 +131,23 @@ function handleCloseCleaner() {
 
         <div class="playlists">
           <h2>Your Playlists</h2>
+          <div class="search-container">
+            <input
+              v-model="searchTerm"
+              type="text"
+              placeholder="Search playlists..."
+              class="search-input"
+            >
+          </div>
           <div v-if="playlists.length === 0" class="no-playlists">
             No playlists found
           </div>
+          <div v-else-if="filteredPlaylists.length === 0" class="no-playlists">
+            No playlists match your search
+          </div>
           <ul v-else class="playlist-list">
             <li 
-              v-for="playlist in playlists" 
+              v-for="playlist in filteredPlaylists" 
               :key="playlist.id" 
               class="playlist-item"
               @click="handlePlaylistSelect(playlist)"
@@ -189,8 +216,24 @@ header h1 {
 
 .login-container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin: 2rem 0;
+  gap: 1.5rem;
+}
+
+.app-description {
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.app-description p {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: #666;
+  margin: 0;
 }
 
 .login-button {
@@ -234,6 +277,30 @@ header h1 {
 .playlists h2 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
+}
+
+.search-container {
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #282828;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input::placeholder {
+  color: #888;
+}
+
+.search-input:focus {
+  border-color: #1DB954;
 }
 
 .playlist-list {

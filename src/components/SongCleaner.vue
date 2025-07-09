@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { SpotifyTrack } from '../types/spotify';
+import type { SpotifyTrack, SpotifyError } from '../types/spotify';
 import { getTracks, removeTrack } from '../services/spotifyApi';
 import SpotifyPlayer from './SpotifyPlayer.vue';
+import TrackList from './TrackList.vue';
+import ErrorHandler from './ErrorHandler.vue';
 
 const props = defineProps<{
   playlistId: string;
@@ -17,9 +19,9 @@ const tracks = ref<SpotifyTrack[]>([]); // queue of tracks to review
 const keptTracks = ref<SpotifyTrack[]>([]); // tracks that have been kept
 const discardedTracks = ref<SpotifyTrack[]>([]); // tracks that have been discarded
 const loading = ref(false);
-const error = ref<string | null>(null);
-const bufferSize = 5;
-const minTracksThreshold = 4 // Load more when we have fewer than this many tracks
+const error = ref<SpotifyError | string | null>(null);
+const bufferSize = 30
+const minTracksThreshold = 10 // Loadmore when we have fewer than this many tracks
 
 // Load initial batch of tracks
 onMounted(async () => {
@@ -33,7 +35,8 @@ onMounted(async () => {
 async function loadInitialTracks() {
   try {
     loading.value = true;
-    const response = await getTracks(props.playlistId, bufferSize, 0);
+    error.value = null;
+    const response = await getTracks(props.playlistId, bufferSize, 0, true);
     tracks.value = response.items;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load tracks';
@@ -48,10 +51,11 @@ async function loadInitialTracks() {
  */
 async function loadMoreTracks(offset: number) {
   try {
-    const response = await getTracks(props.playlistId, bufferSize, offset);
+    const response = await getTracks(props.playlistId, bufferSize, offset, true);
     tracks.value = [...tracks.value, ...response.items];
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load more tracks';
+    // Don't show error for background loading, just log it
+    console.error('Failed to load more tracks:', err);
   }
 }
 
@@ -93,13 +97,33 @@ async function handleDiscard() {
     const currentTrack = tracks.value[0];
     if (!currentTrack) return;
 
+    error.value = null; // Clear any previous errors
     await removeTrack(props.playlistId, currentTrack.id);
     discardedTracks.value.push(currentTrack);
     await nextTrack();
   } catch (err) {
     console.error('error removing track', err);
-    error.value = err instanceof Error ? err.message : 'Failed to remove track';
+    error.value = err instanceof Error ? err.message : err as SpotifyError;
+    // Don't advance to next track on error - let user retry
   }
+}
+
+/**
+ * Retries the last failed operation
+ */
+async function handleRetry() {
+  error.value = null;
+  // The error was likely from handleDiscard, so we can retry that
+  if (tracks.value.length > 0) {
+    await handleDiscard();
+  }
+}
+
+/**
+ * Dismisses the current error
+ */
+function handleDismissError() {
+  error.value = null;
 }
 </script>
 
@@ -108,14 +132,27 @@ async function handleDiscard() {
     <div class="header">
       <h2>Cleaning: {{ playlistName }}</h2>
       <div class="stats">
-        <span>Kept: {{ keptTracks.length }}</span>
-        <span>Discarded: {{ discardedTracks.length }}</span>
+        <TrackList 
+          :tracks="discardedTracks" 
+          title="Discarded" 
+          empty-message="No tracks discarded yet"
+        />
+        <TrackList 
+          :tracks="keptTracks" 
+          title="Kept" 
+          empty-message="No tracks kept yet"
+        />
       </div>
       <button @click="emit('close')" class="close-button">×</button>
     </div>
 
+    <ErrorHandler 
+      :error="error"
+      :on-retry="handleRetry"
+      :on-dismiss="handleDismissError"
+    />
+
     <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="tracks.length === 0" class="no-tracks">
       No more tracks to review
     </div>
@@ -296,12 +333,7 @@ async function handleDiscard() {
   gap: 0.5rem;
   color: #b3b3b3;
   font-size: 0.9rem;
-}
-
-.stats span {
-  padding: 0.25rem 0.5rem;
-  background: #282828;
-  border-radius: 4px;
+  align-items: center;
 }
 
 @media (min-width: 768px) {

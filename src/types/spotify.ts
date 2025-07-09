@@ -118,3 +118,17 @@ export interface SpotifyPlayer {
   setVolume(volume: number): Promise<void>;
   activateElement(): Promise<void>; // To bypass autoplay blocking on mobile
 }
+
+export interface SpotifyError {
+  type: 'rate_limit' | 'authentication' | 'permission' | 'network' | 'unknown';
+  message: string;
+  retryAfter?: number; // seconds
+  status?: number;
+}
+
+export interface SpotifyErrorResponse {
+  error: {
+    status: number;
+    message: string;
+  };
+}
