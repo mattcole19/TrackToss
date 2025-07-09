@@ -3,12 +3,78 @@ import type {
   SpotifyLikedSongsResponse, 
   SpotifyPlaylist,
   SpotifyPlaylistTracksResponse,
-  SpotifyTrack
+  SpotifyTrack,
+  SpotifyError,
+  SpotifyErrorResponse
 } from '../types/spotify';
 import { getAccessToken } from './spotifyAuth';
 
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 const SPOTIFY_LIKED_SONGS_PLAYLIST_ID = 'liked-songs';
+
+/**
+ * Parses Spotify API error responses and returns structured error information
+ */
+function parseSpotifyError(response: Response, responseText?: string): SpotifyError {
+  const status = response.status;
+  const retryAfter = response.headers.get('Retry-After');
+  
+  // Try to parse error response
+  let errorMessage = 'Unknown error occurred';
+  try {
+    if (responseText) {
+      const errorData: SpotifyErrorResponse = JSON.parse(responseText);
+      errorMessage = errorData.error?.message || errorMessage;
+    }
+  } catch {
+    // If parsing fails, use status text
+    errorMessage = response.statusText || errorMessage;
+  }
+
+  // Categorize errors based on status codes
+  switch (status) {
+    case 429:
+      return {
+        type: 'rate_limit',
+        message: 'Rate limit exceeded. Please wait before trying again.',
+        retryAfter: retryAfter ? parseInt(retryAfter) : 60,
+        status
+      };
+    case 401:
+      return {
+        type: 'authentication',
+        message: 'Authentication failed. Please log in again.',
+        status
+      };
+    case 403:
+      return {
+        type: 'permission',
+        message: 'You don\'t have permission to perform this action.',
+        status
+      };
+    case 404:
+      return {
+        type: 'unknown',
+        message: 'Resource not found.',
+        status
+      };
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return {
+        type: 'network',
+        message: 'Spotify service is temporarily unavailable. Please try again later.',
+        status
+      };
+    default:
+      return {
+        type: 'unknown',
+        message: errorMessage,
+        status
+      };
+  }
+}
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   // Makes request to Spotify API with auth token
@@ -26,7 +92,9 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     console.error('Spotify API error', response);
-    throw new Error(`Spotify API error: ${response.statusText}`);
+    const responseText = await response.text();
+    const error = parseSpotifyError(response, responseText);
+    throw error;
   }
 
   // Return null for empty responses (like DELETE requests)

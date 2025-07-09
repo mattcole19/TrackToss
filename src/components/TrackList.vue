@@ -1,3 +1,5 @@
+<!-- This component is used to display a list of tracks in a dropdown menu that have been kept or discarded. -->
+
 <script setup lang="ts">
 import type { SpotifyTrack } from '../types/spotify';
 
