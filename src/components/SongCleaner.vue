@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import type { SpotifyTrack } from '../types/spotify';
 import { getTracks, removeTrack } from '../services/spotifyApi';
 import SpotifyPlayer from './SpotifyPlayer.vue';
+import TrackList from './TrackList.vue';
 
 const props = defineProps<{
   playlistId: string;
@@ -108,8 +109,16 @@ async function handleDiscard() {
     <div class="header">
       <h2>Cleaning: {{ playlistName }}</h2>
       <div class="stats">
-        <span>Kept: {{ keptTracks.length }}</span>
-        <span>Discarded: {{ discardedTracks.length }}</span>
+        <TrackList 
+          :tracks="discardedTracks" 
+          title="Discarded" 
+          empty-message="No tracks discarded yet"
+        />
+        <TrackList 
+          :tracks="keptTracks" 
+          title="Kept" 
+          empty-message="No tracks kept yet"
+        />
       </div>
       <button @click="emit('close')" class="close-button">×</button>
     </div>
@@ -296,12 +305,7 @@ async function handleDiscard() {
   gap: 0.5rem;
   color: #b3b3b3;
   font-size: 0.9rem;
-}
-
-.stats span {
-  padding: 0.25rem 0.5rem;
-  background: #282828;
-  border-radius: 4px;
+  align-items: center;
 }
 
 @media (min-width: 768px) {
