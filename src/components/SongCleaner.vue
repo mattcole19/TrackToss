@@ -20,8 +20,8 @@ const keptTracks = ref<SpotifyTrack[]>([]); // tracks that have been kept
 const discardedTracks = ref<SpotifyTrack[]>([]); // tracks that have been discarded
 const loading = ref(false);
 const error = ref<SpotifyError | string | null>(null);
-const bufferSize = 5;
-const minTracksThreshold = 4 // Load more when we have fewer than this many tracks
+const bufferSize = 30
+const minTracksThreshold = 10 // Loadmore when we have fewer than this many tracks
 
 // Load initial batch of tracks
 onMounted(async () => {

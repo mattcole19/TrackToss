@@ -134,6 +134,9 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
   return [likedSongsPlaylist, ...typedPlaylists];
 }
 
+// Cache for total track counts to avoid repeated API calls
+const totalCountCache = new Map<string, number>();
+
 /**
  * Fetches tracks from either Liked Songs or a playlist
  * @param playlistId - The ID of the playlist or 'liked-songs'
@@ -150,17 +153,28 @@ export async function getTracks(
   if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
     // For Liked Songs, we need to calculate the reverse offset
     let actualOffset = offset;
+    let total: number;
+    
     if (reverse) {
-      // First get the total count to calculate reverse offset
-      const totalResponse = await fetchWithAuth(`/me/tracks?limit=1`) as SpotifyLikedSongsResponse;
-      const total = totalResponse.total;
-      actualOffset = Math.max(0, total - limit - offset);
+      // Get total count from cache or API
+      if (totalCountCache.has(playlistId)) {
+        total = totalCountCache.get(playlistId)!;
+      } else {
+        const totalResponse = await fetchWithAuth(`/me/tracks?limit=1`) as SpotifyLikedSongsResponse;
+        total = totalResponse.total;
+        totalCountCache.set(playlistId, total);
+      }
+      
+      // For reverse order: we want to start from the end and work backwards
+      // If offset=0, we want the last 'limit' tracks
+      // If offset=5, we want the 5 tracks before the last 'limit' tracks
+      actualOffset = Math.max(0, total - offset - limit);
     }
     
     const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyLikedSongsResponse;
     const items = response.items.map(item => item.track);
     
-    // If reverse is true, reverse the order of items
+    // If reverse is true, reverse the order of items so oldest comes first
     return {
       items: reverse ? items.reverse() : items,
       total: response.total
@@ -168,17 +182,28 @@ export async function getTracks(
   } else {
     // For regular playlists, we need to calculate the reverse offset
     let actualOffset = offset;
+    let total: number;
+    
     if (reverse) {
-      // First get the total count to calculate reverse offset
-      const totalResponse = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=1`) as SpotifyPlaylistTracksResponse;
-      const total = totalResponse.total;
-      actualOffset = Math.max(0, total - limit - offset);
+      // Get total count from cache or API
+      if (totalCountCache.has(playlistId)) {
+        total = totalCountCache.get(playlistId)!;
+      } else {
+        const totalResponse = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=1`) as SpotifyPlaylistTracksResponse;
+        total = totalResponse.total;
+        totalCountCache.set(playlistId, total);
+      }
+      
+      // For reverse order: we want to start from the end and work backwards
+      // If offset=0, we want the last 'limit' tracks
+      // If offset=5, we want the 5 tracks before the last 'limit' tracks
+      actualOffset = Math.max(0, total - offset - limit);
     }
     
     const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyPlaylistTracksResponse;
     const items = response.items.map(item => item.track);
     
-    // If reverse is true, reverse the order of items
+    // If reverse is true, reverse the order of items so oldest comes first
     return {
       items: reverse ? items.reverse() : items,
       total: response.total
@@ -192,6 +217,12 @@ export async function getTracks(
  * @param trackId - The ID of the track to remove
  */
 export async function removeTrack(playlistId: string, trackId: string) {
+  // Decrement the total count cache since we're removing a track
+  if (totalCountCache.has(playlistId)) {
+    const currentTotal = totalCountCache.get(playlistId)!;
+    totalCountCache.set(playlistId, Math.max(0, currentTotal - 1));
+  }
+  
   if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
     return fetchWithAuth(`/me/tracks`, {
       method: 'DELETE',
