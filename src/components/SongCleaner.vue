@@ -33,7 +33,7 @@ onMounted(async () => {
 async function loadInitialTracks() {
   try {
     loading.value = true;
-    const response = await getTracks(props.playlistId, bufferSize, 0);
+    const response = await getTracks(props.playlistId, bufferSize, 0, true);
     tracks.value = response.items;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load tracks';
@@ -48,7 +48,7 @@ async function loadInitialTracks() {
  */
 async function loadMoreTracks(offset: number) {
   try {
-    const response = await getTracks(props.playlistId, bufferSize, offset);
+    const response = await getTracks(props.playlistId, bufferSize, offset, true);
     tracks.value = [...tracks.value, ...response.items];
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load more tracks';

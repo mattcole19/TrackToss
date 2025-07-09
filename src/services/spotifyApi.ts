@@ -71,18 +71,48 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyP
  * @param playlistId - The ID of the playlist or 'liked-songs'
  * @param limit - Number of tracks to fetch
  * @param offset - Offset for pagination
+ * @param reverse - If true, fetch tracks in reverse order (oldest first)
  */
-export async function getTracks(playlistId: string, limit = 50, offset = 0): Promise<{ items: SpotifyTrack[], total: number }> {
+export async function getTracks(
+  playlistId: string, 
+  limit = 50, 
+  offset = 0, 
+  reverse = true
+): Promise<{ items: SpotifyTrack[], total: number }> {
   if (playlistId === SPOTIFY_LIKED_SONGS_PLAYLIST_ID) {
-    const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${offset}`) as SpotifyLikedSongsResponse;
+    // For Liked Songs, we need to calculate the reverse offset
+    let actualOffset = offset;
+    if (reverse) {
+      // First get the total count to calculate reverse offset
+      const totalResponse = await fetchWithAuth(`/me/tracks?limit=1`) as SpotifyLikedSongsResponse;
+      const total = totalResponse.total;
+      actualOffset = Math.max(0, total - limit - offset);
+    }
+    
+    const response = await fetchWithAuth(`/me/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyLikedSongsResponse;
+    const items = response.items.map(item => item.track);
+    
+    // If reverse is true, reverse the order of items
     return {
-      items: response.items.map(item => item.track),
+      items: reverse ? items.reverse() : items,
       total: response.total
     };
   } else {
-    const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`) as SpotifyPlaylistTracksResponse;
+    // For regular playlists, we need to calculate the reverse offset
+    let actualOffset = offset;
+    if (reverse) {
+      // First get the total count to calculate reverse offset
+      const totalResponse = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=1`) as SpotifyPlaylistTracksResponse;
+      const total = totalResponse.total;
+      actualOffset = Math.max(0, total - limit - offset);
+    }
+    
+    const response = await fetchWithAuth(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${actualOffset}`) as SpotifyPlaylistTracksResponse;
+    const items = response.items.map(item => item.track);
+    
+    // If reverse is true, reverse the order of items
     return {
-      items: response.items.map(item => item.track),
+      items: reverse ? items.reverse() : items,
       total: response.total
     };
   }
