@@ -197,12 +197,23 @@ function handleCloseCleaner() {
         <div class="playlists">
           <h2>Your Playlists</h2>
           <div class="search-container">
-            <input
-              v-model="searchTerm"
-              type="text"
-              placeholder="Search playlists..."
-              class="search-input"
-            >
+            <div class="search-input-wrapper">
+              <input
+                v-model="searchTerm"
+                type="text"
+                placeholder="Search playlists..."
+                class="search-input"
+              >
+              <button 
+                v-if="searchTerm" 
+                @click="searchTerm = ''" 
+                class="search-clear-button"
+                type="button"
+                title="Clear search"
+              >
+                ×
+              </button>
+            </div>
           </div>
           <div v-if="playlists.length === 0" class="no-playlists">
             No playlists found
@@ -359,9 +370,16 @@ header h1 {
   margin-bottom: 1rem;
 }
 
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .search-input {
   width: 100%;
   padding: 0.75rem 1rem;
+  padding-right: 2.5rem; /* Space for the clear button */
   border: 1px solid #444;
   border-radius: 8px;
   background: #282828;
@@ -377,6 +395,31 @@ header h1 {
 
 .search-input:focus {
   border-color: #1DB954;
+}
+
+.search-clear-button {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.search-clear-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .playlist-list {
