@@ -72,15 +72,6 @@ function updateCleaningState(playlistId: string, state: CleaningState) {
 }
 
 /**
- * Resets the cleaning progress for a specific playlist
- * @param playlistId - The ID of the playlist
- */
-function resetCleaningProgress(playlistId: string) {
-  delete cleaningStates.value[playlistId];
-  saveCleaningStates();
-}
-
-/**
  * Gets the progress percentage for a playlist
  * @param playlistId - The ID of the playlist
  * @returns The progress percentage (0-100) or null if no progress
