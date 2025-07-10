@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import type { SpotifyTrack, SpotifyError } from '../types/spotify';
+import type { CleaningState } from '../types/cleaning';
 import { getTracks, removeTrack } from '../services/spotifyApi';
 import SpotifyPlayer from './SpotifyPlayer.vue';
 import TrackList from './TrackList.vue';
@@ -9,10 +10,12 @@ import ErrorHandler from './ErrorHandler.vue';
 const props = defineProps<{
   playlistId: string;
   playlistName: string;
+  initialState?: CleaningState | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'state-update', state: CleaningState): void;
 }>();
 
 const tracks = ref<SpotifyTrack[]>([]); // queue of tracks to review
@@ -22,11 +25,39 @@ const loading = ref(false);
 const error = ref<SpotifyError | string | null>(null);
 const bufferSize = 30
 const minTracksThreshold = 10 // Loadmore when we have fewer than this many tracks
+const lastProcessedOffset = ref(0);
+const totalTracks = ref(0);
 
 // Load initial batch of tracks
 onMounted(async () => {
-  await loadInitialTracks();
+  if (props.initialState) {
+    // Restore state from persistence
+    keptTracks.value = props.initialState.keptTracks;
+    discardedTracks.value = props.initialState.discardedTracks;
+    tracks.value = props.initialState.queueTracks;
+    lastProcessedOffset.value = props.initialState.lastProcessedOffset;
+    totalTracks.value = props.initialState.totalTracks;
+    
+    // If we don't have enough tracks in the queue, load more
+    if (tracks.value.length < minTracksThreshold) {
+      await loadMoreTracks(lastProcessedOffset.value);
+    }
+  } else {
+    // Start fresh
+    await loadInitialTracks();
+  }
 });
+
+// Watch for state changes and emit updates
+watch([tracks, keptTracks, discardedTracks, lastProcessedOffset, totalTracks], () => {
+  emit('state-update', {
+    keptTracks: keptTracks.value,
+    discardedTracks: discardedTracks.value,
+    queueTracks: tracks.value,
+    lastProcessedOffset: lastProcessedOffset.value,
+    totalTracks: totalTracks.value
+  });
+}, { deep: true });
 
 /**
  * Loads the initial batch of tracks when the component mounts.
@@ -38,6 +69,8 @@ async function loadInitialTracks() {
     error.value = null;
     const response = await getTracks(props.playlistId, bufferSize, 0, true);
     tracks.value = response.items;
+    totalTracks.value = response.total;
+    lastProcessedOffset.value = 0;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load tracks';
   } finally {
@@ -53,6 +86,9 @@ async function loadMoreTracks(offset: number) {
   try {
     const response = await getTracks(props.playlistId, bufferSize, offset, true);
     tracks.value = [...tracks.value, ...response.items];
+    if (totalTracks.value === 0) {
+      totalTracks.value = response.total;
+    }
   } catch (err) {
     // Don't show error for background loading, just log it
     console.error('Failed to load more tracks:', err);
@@ -68,10 +104,12 @@ async function nextTrack() {
   const currentTrack = tracks.value.shift();
   if (!currentTrack) return;
 
+  // Update the offset to track our progress
+  lastProcessedOffset.value = keptTracks.value.length + discardedTracks.value.length;
+
   // If we're running low on tracks, load more in the background
   if (tracks.value.length < minTracksThreshold) {
-    const num_tracks_checked = tracks.value.length + keptTracks.value.length + discardedTracks.value.length;
-    await loadMoreTracks(num_tracks_checked);
+    await loadMoreTracks(lastProcessedOffset.value);
   }
 }
 
@@ -125,6 +163,21 @@ async function handleRetry() {
 function handleDismissError() {
   error.value = null;
 }
+
+/**
+ * Resets the cleaning progress for this playlist
+ */
+function handleResetProgress() {
+  // Clear all state
+  tracks.value = [];
+  keptTracks.value = [];
+  discardedTracks.value = [];
+  lastProcessedOffset.value = 0;
+  totalTracks.value = 0;
+  
+  // Reload initial tracks
+  loadInitialTracks();
+}
 </script>
 
 <template>
@@ -143,7 +196,12 @@ function handleDismissError() {
           empty-message="No tracks kept yet"
         />
       </div>
-      <button @click="emit('close')" class="close-button">×</button>
+      <div class="header-actions">
+        <button @click="handleResetProgress" class="reset-button" title="Reset progress">
+          ↺
+        </button>
+        <button @click="emit('close')" class="close-button">×</button>
+      </div>
     </div>
 
     <ErrorHandler 
@@ -204,6 +262,12 @@ function handleDismissError() {
   flex-shrink: 0; /* Prevent header from shrinking */
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header h2 {
   font-size: 1.2rem;
   margin: 0;
@@ -213,10 +277,10 @@ function handleDismissError() {
   max-width: 70%;
 }
 
-.close-button {
+.reset-button, .close-button {
   background: none;
   border: none;
-  font-size: 2rem;
+  font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
   color: white;
@@ -225,6 +289,16 @@ function handleDismissError() {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover, .close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.close-button {
+  font-size: 2rem;
 }
 
 .track-container {

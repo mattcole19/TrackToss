@@ -3,8 +3,11 @@ import { onMounted, ref, computed } from 'vue';
 import { isAuthenticated, initiateSpotifyLogin, handleCallback, logout } from './services/spotifyAuth';
 import { getUserPlaylists } from './services/spotifyApi';
 import type { SpotifyPlaylist } from './types/spotify';
+import type { CleaningState } from './types/cleaning';
 import SongCleaner from './components/SongCleaner.vue';
 
+// Persistent state management for songs kept/discarded per playlist
+const cleaningStates = ref<Record<string, CleaningState>>({});
 const isLoggedIn = ref(false);
 const playlists = ref<SpotifyPlaylist[]>([]);
 const loading = ref(false);
@@ -25,10 +28,79 @@ const filteredPlaylists = computed(() => {
 });
 
 /**
+ * Loads cleaning states from localStorage
+ */
+function loadCleaningStates() {
+  try {
+    const stored = localStorage.getItem('tracktoss_cleaning_states');
+    if (stored) {
+      cleaningStates.value = JSON.parse(stored);
+    }
+  } catch (err) {
+    console.error('Failed to load cleaning states:', err);
+  }
+}
+
+/**
+ * Saves cleaning states to localStorage
+ */
+function saveCleaningStates() {
+  try {
+    localStorage.setItem('tracktoss_cleaning_states', JSON.stringify(cleaningStates.value));
+  } catch (err) {
+    console.error('Failed to save cleaning states:', err);
+  }
+}
+
+/**
+ * Gets the cleaning state for a specific playlist
+ * @param playlistId - The ID of the playlist
+ * @returns The cleaning state or null if not found
+ */
+function getCleaningState(playlistId: string): CleaningState | null {
+  return cleaningStates.value[playlistId] || null;
+}
+
+/**
+ * Updates the cleaning state for a specific playlist
+ * @param playlistId - The ID of the playlist
+ * @param state - The new cleaning state
+ */
+function updateCleaningState(playlistId: string, state: CleaningState) {
+  cleaningStates.value[playlistId] = state;
+  saveCleaningStates();
+}
+
+/**
+ * Resets the cleaning progress for a specific playlist
+ * @param playlistId - The ID of the playlist
+ */
+function resetCleaningProgress(playlistId: string) {
+  delete cleaningStates.value[playlistId];
+  saveCleaningStates();
+}
+
+/**
+ * Gets the progress percentage for a playlist
+ * @param playlistId - The ID of the playlist
+ * @returns The progress percentage (0-100) or null if no progress
+ */
+function getProgressPercentage(playlistId: string): number | null {
+  const state = getCleaningState(playlistId);
+  if (!state || state.totalTracks === 0) return null;
+  
+  const processed = state.keptTracks.length + state.discardedTracks.length;
+  return Math.round((processed / state.totalTracks) * 100);
+}
+
+/**
  * Initializes the app by checking for OAuth callback and loading playlists if authenticated.
  * Handles the Spotify OAuth callback if present in the URL.
  */
 onMounted(async () => {
+  // Load persistent cleaning states
+  loadCleaningStates();
+  
   // Check if we're in the callback route
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
@@ -97,9 +169,19 @@ function handlePlaylistSelect(playlist: SpotifyPlaylist) {
 
 /**
  * Closes the song cleaner interface.
+ * The cleaning state is automatically saved by the SongCleaner component.
  */
 function handleCloseCleaner() {
   selectedPlaylist.value = null;
+}
+
+/**
+ * Resets the cleaning progress for the currently selected playlist.
+ */
+function handleResetProgress() {
+  if (selectedPlaylist.value) {
+    resetCleaningProgress(selectedPlaylist.value.id);
+  }
 }
 </script>
 
@@ -164,6 +246,15 @@ function handleCloseCleaner() {
                   <span v-if="playlist.type === 'liked'" class="liked-badge">❤️</span>
                 </h3>
                 <p>{{ playlist.tracks.total }} tracks</p>
+                <div v-if="getProgressPercentage(playlist.id)" class="progress-info">
+                  <div class="progress-bar">
+                    <div 
+                      class="progress-fill" 
+                      :style="{ width: getProgressPercentage(playlist.id) + '%' }"
+                    ></div>
+                  </div>
+                  <span class="progress-text">{{ getProgressPercentage(playlist.id) }}% complete</span>
+                </div>
               </div>
             </li>
           </ul>
@@ -175,7 +266,9 @@ function handleCloseCleaner() {
       v-if="selectedPlaylist"
       :playlist-id="selectedPlaylist.id"
       :playlist-name="selectedPlaylist.name"
+      :initial-state="getCleaningState(selectedPlaylist.id)"
       @close="handleCloseCleaner"
+      @state-update="(state: CleaningState) => selectedPlaylist && updateCleaningState(selectedPlaylist.id, state)"
     />
   </div>
 </template>
@@ -350,6 +443,30 @@ header h1 {
   margin: 0.25rem 0 0;
   color: #b3b3b3;
   font-size: 0.9rem;
+}
+
+.progress-info {
+  margin-top: 0.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: #444;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #1DB954;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.8rem;
+  color: #1DB954;
 }
 
 .no-playlists {
