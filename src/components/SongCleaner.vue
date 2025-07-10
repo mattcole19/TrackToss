@@ -183,7 +183,15 @@ function handleResetProgress() {
 <template>
   <div class="song-cleaner">
     <div class="header">
-      <h2>Cleaning: {{ playlistName }}</h2>
+      <div class="header-top">
+        <h2>Cleaning: {{ playlistName }}</h2>
+        <div class="header-actions">
+          <button @click="handleResetProgress" class="reset-button" title="Reset progress">
+            ↺
+          </button>
+          <button @click="emit('close')" class="close-button">×</button>
+        </div>
+      </div>
       <div class="stats">
         <TrackList 
           :tracks="discardedTracks" 
@@ -195,12 +203,6 @@ function handleResetProgress() {
           title="Kept" 
           empty-message="No tracks kept yet"
         />
-      </div>
-      <div class="header-actions">
-        <button @click="handleResetProgress" class="reset-button" title="Reset progress">
-          ↺
-        </button>
-        <button @click="emit('close')" class="close-button">×</button>
       </div>
     </div>
 
@@ -254,15 +256,23 @@ function handleResetProgress() {
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 1rem;
   padding: 0 0.5rem;
   flex-shrink: 0; /* Prevent header from shrinking */
+  text-align: center;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  position: relative;
 }
 
 .header-actions {
+  position: absolute;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -274,7 +284,8 @@ function handleResetProgress() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70%;
+  flex: 1;
+  text-align: center;
 }
 
 .reset-button, .close-button {
@@ -408,6 +419,7 @@ function handleResetProgress() {
   color: #b3b3b3;
   font-size: 0.9rem;
   align-items: center;
+  justify-content: center;
 }
 
 @media (min-width: 768px) {
