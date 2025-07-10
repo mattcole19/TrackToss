@@ -175,14 +175,6 @@ function handleCloseCleaner() {
   selectedPlaylist.value = null;
 }
 
-/**
- * Resets the cleaning progress for the currently selected playlist.
- */
-function handleResetProgress() {
-  if (selectedPlaylist.value) {
-    resetCleaningProgress(selectedPlaylist.value.id);
-  }
-}
 </script>
 
 <template>
