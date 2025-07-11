@@ -145,8 +145,15 @@ async function togglePlay() {
       @click="togglePlay"
       class="play-button"
       :disabled="!!error"
+      :title="isPlaying ? 'Pause' : 'Play'"
     >
-      {{ isPlaying ? '⏸' : '▶' }}
+      <svg v-if="isPlaying" class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="6" y="4" width="4" height="16" rx="1"/>
+        <rect x="14" y="4" width="4" height="16" rx="1"/>
+      </svg>
+      <svg v-else class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="8,5 8,19 19,12"/>
+      </svg>
     </button>
     <div v-if="error" class="error">{{ error }}</div>
   </div>
@@ -165,26 +172,47 @@ async function togglePlay() {
   background: #1DB954;
   border: none;
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 1.2rem;
+  width: 56px;
+  height: 56px;
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   touch-action: manipulation;
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.3);
 }
 
 .play-button:active:not(:disabled) {
   background: #1ed760;
   transform: scale(0.95);
+  box-shadow: 0 1px 4px rgba(29, 185, 84, 0.4);
 }
 
 .play-button:disabled {
   background: #666;
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+.play-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .play-button {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .play-icon {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .error {
