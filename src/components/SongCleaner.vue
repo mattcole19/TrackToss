@@ -264,7 +264,6 @@ function handleResetProgress() {
 
 .header-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
   position: relative;
@@ -276,6 +275,8 @@ function handleResetProgress() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
+  z-index: 1;
 }
 
 .header h2 {
@@ -284,8 +285,10 @@ function handleResetProgress() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
+  width: 100%;
   text-align: center;
+  padding: 0 100px; /* Space for buttons on both sides */
+  box-sizing: border-box;
 }
 
 .reset-button, .close-button {
