@@ -1,5 +1,8 @@
 # TrackToss 🎵
 
+[Demo](https://www.loom.com/share/711ac56f237140588db18fb0919ba421)
+
+
 A Vue 3 + TypeScript web application that helps you quickly delete songs from your Spotify playlists while being able to hear a snippet of each track. The Spotify app requires 3 clicks/taps to remove a song from the "Now Playing" view - TrackToss makes this process much faster and more efficient (and fun!).
 
 ## What TrackToss Does
@@ -11,7 +14,7 @@ A Vue 3 + TypeScript web application that helps you quickly delete songs from yo
 
 ## Why This Isn't Publicly Available
 
-Due to recent changes in Spotify's developer policies ([Extended Access Mode requirements](https://developer.spotify.com/blog/2025-04-15-updating-the-criteria-for-web-api-extended-access)), applications that require user authentication now need "Extended Access Mode" which is only available to business accounts. This policy change effectively prevents small developers from creating publicly available Spotify applications.
+Due to recent changes in Spotify's developer policies ([Extended Access Mode requirements](https://developer.spotify.com/blog/2025-04-15-updating-the-criteria-for-web-api-extended-access)), applications that require user authentication now need "Extended Access Mode" which is only available to business accounts.
 
 TrackToss was designed to be a public tool for music lovers to clean up their playlists, but these policy restrictions mean it can only be used by developers who run it locally with their own Spotify app credentials.
 
