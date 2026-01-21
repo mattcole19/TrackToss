@@ -1,6 +1,6 @@
 # TrackToss 🎵
 
-<div style="position: relative; padding-bottom: 49.270833333333336%; height: 0;"><iframe src="https://www.loom.com/embed/711ac56f237140588db18fb0919ba421" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+[Demo](https://www.loom.com/share/711ac56f237140588db18fb0919ba421)
 
 
 A Vue 3 + TypeScript web application that helps you quickly delete songs from your Spotify playlists while being able to hear a snippet of each track. The Spotify app requires 3 clicks/taps to remove a song from the "Now Playing" view - TrackToss makes this process much faster and more efficient (and fun!).
